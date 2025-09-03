@@ -6,7 +6,7 @@ import UsernameModal from "../components/UsernameModal";
 import { io } from "socket.io-client";
 
 
-  
+
 
 
 
@@ -46,15 +46,33 @@ import { io } from "socket.io-client";
 //   ],
 // };
 
+const formatTime = (time) => {
+  if (!time) return "";
+  return new Date(time).toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+};
+
 export default function Chat() {
   const [username, setUsername] = useState(""); // store user's name
   const [userList, setUserList] = useState([]);
   const [usernameError, setUsernameError] = useState("");
+  const [unreadByUser, setUnreadByUser] = useState({});
 
   const [activeUserId, setActiveUserId] = useState(null);
 
   const socketRef = useRef(null);
   const [socket, setSocket] = useState(null);
+
+  const audioRef1 = useRef(null);
+  const audioRef2 = useRef(null);
+
+
+  useEffect(() => {
+    audioRef1.current = new Audio("/sounds/notification1.wav");
+    audioRef2.current = new Audio("/sounds/notification2.wav");
+  }, []);
 
   useEffect(() => {
     // Only initialize if not already
@@ -66,17 +84,14 @@ export default function Chat() {
     setSocket(socket);
 
     socket?.on("connect", () => {
-      console.log("Socket connected:", socket.id);
+      console.info("Socket connected:", socket.id);
     });
 
     socket?.on("disconnect", (reason) => {
-      console.log("Socket disconnected:", reason);
+      console.info("Socket disconnected:", reason);
     });
 
-    // Example: listen to userList
-    socket?.on("userList", (list) => {
-      console.log("Received user list:", list);
-    });
+
 
     return () => {
       socket.disconnect();
@@ -111,7 +126,6 @@ export default function Chat() {
   useEffect(() => {
     socket?.on("userList", (list) => {
       // list is array of usernames
-      console.log("Received user list:", list);
       setUserList(list.map((name, idx) => ({
         id: idx + 1,
         name,
@@ -120,7 +134,6 @@ export default function Chat() {
       })))
 
 
-      console.log("userList ref:", userList);
     });
 
     return () => socket?.off("userList");
@@ -128,7 +141,7 @@ export default function Chat() {
 
   useEffect(() => {
     if (username) {
-      console.log("Emitting join for username:", username);
+      console.info("Joining room:", username)
       socket?.emit("join", username);
     }
     return () => socket?.off("join");
@@ -138,21 +151,45 @@ export default function Chat() {
   useEffect(() => {
     socket?.on("privateMessage", ({ from, text, time }) => {
       // find user by name
-      console.log("Received private message:", { from, text, time, username });
       if (from.trim().toLowerCase() === username.trim().toLowerCase()) return;
       const user = userList.find((u) => u.name === from);
       if (!user) return;
 
       setMessagesByUser((prev) => ({
         ...prev,
-        [user.id]: [...(prev[user.id] ?? []), { from, text }],
+        [user.id]: [...(prev[user.id] ?? []), { from, text, time }],
       }));
+
+
+      // 🔥 Mark unread if not the active user
+      if (user.id !== activeUserId) {
+        setUnreadByUser((prev) => ({ ...prev, [user.id]: true }));
+      }
+
+      // 🔔 Play notification sound when receiving a message
+
+      if (audioRef1.current && user.id !== activeUserId) {
+        audioRef1.current.currentTime = 0; // rewind if still playing
+        audioRef1.current.play().catch((err) => {
+          console.warn("Autoplay blocked:", err);
+        });
+      }
+
+      // 🔔 Play notification sound when receiving message and same user is open
+      if (audioRef2.current && user.id === activeUserId) {
+        audioRef2.current.currentTime = 0; // rewind if still playing
+        audioRef2.current.play().catch((err) => {
+          console.warn("Autoplay blocked:", err);
+        });
+      }
+
+
     });
 
     return () => {
       socket?.off("privateMessage");
     };
-  }, [userList, socket]);
+  }, [userList, socket, username, activeUserId]);
 
 
   useEffect(() => {
@@ -162,6 +199,11 @@ export default function Chat() {
   const handleSelectUser = (id) => {
     setActiveUserId(id);
     setIsSidebarOpen(false); // close drawer on mobile when selecting
+    setUnreadByUser((prev) => {
+      const updated = { ...prev };
+      delete updated[id]; // remove unread dot for this user
+      return updated;
+    });
   };
 
   const setDraftForUser = (id, value) =>
@@ -177,13 +219,12 @@ export default function Chat() {
     if (!recipientName) return;
 
     // send private message to recipient
-    console.log(`Sending private message to ${recipientName}: ${text}`);
     socket?.emit("privateMessage", { to: recipientName, text });
 
     // add to local state
     setMessagesByUser((prev) => ({
       ...prev,
-      [activeUserId]: [...(prev[activeUserId] ?? []), { from: "me", text }],
+      [activeUserId]: [...(prev[activeUserId] ?? []), { from: "me", text, time: new Date().toISOString() }],
     }));
 
     setDraftForUser(activeUserId, "");
@@ -198,7 +239,7 @@ export default function Chat() {
 
   useEffect(() => {
     socket?.on("usernameTaken", ({ message }) => {
-      console.log("Username taken:", message);
+      console.info("Username taken:", message);
       setUsername("");        // reset the current username input
       setUsernameError(message); // show the error in the modal
     });
@@ -242,11 +283,22 @@ export default function Chat() {
           ${user.name === username ? "border-l-4 border-indigo-500 bg-slate-800/40" : ""}
         `}
               >
-                <img
+                {/* <img
                   src={user.avatar}
                   alt={user.name}
                   className={`h-10 w-10 rounded-full ${user.name === username ? "ring-2 ring-indigo-500" : ""}`}
-                />
+                /> */}
+                <div className="relative">
+                  <img
+                    src={user.avatar}
+                    alt={user.name}
+                    className={`h-10 w-10 rounded-full ${user.name === username ? "ring-2 ring-indigo-500" : ""
+                      }`}
+                  />
+                  {unreadByUser[user.id] && (
+                    <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-gradient-to-r from-indigo-500 via-purple-600 to-pink-500"></span>
+                  )}
+                </div>
                 <div className="min-w-0">
                   <p
                     className={`truncate font-medium ${user.name === username
@@ -316,14 +368,25 @@ export default function Chat() {
               className={`flex ${msg.from === "me" ? "justify-end" : "justify-start"}`}
             >
               <div
-                className={`max-w-[80%] break-all wrap-break-word whitespace-pre-wrap rounded-lg px-4 py-2 text-sm shadow-md ${msg.from === "me"
-                  ? "bg-gradient-to-r from-indigo-500 via-purple-600 to-pink-500 text-white"
-                  : "bg-slate-800 text-gray-200"
+                className={`relative min-w-[60px] max-w-[80%] break-words whitespace-pre-wrap rounded-2xl px-4 py-2 text-sm shadow-md ${msg.from === "me"
+                    ? "bg-gradient-to-r from-indigo-500 via-purple-600 to-pink-500 text-white"
+                    : "bg-slate-800 text-gray-200"
                   }`}
               >
-                {msg.text}
+                <p>{msg.text}</p>
+
+                {/* Timestamp */}
+                <span
+                  className={`absolute -bottom-4 text-[0.7rem] ${msg.from === "me"
+                      ? "right-2 text-pink-200/70"
+                      : "right-2 text-gray-400"
+                    }`}
+                >
+                  {formatTime(msg.time)}
+                </span>
               </div>
             </motion.div>
+
           ))}
           <div ref={bottomRef} />
         </div>
@@ -403,30 +466,6 @@ export default function Chat() {
                 </button>
               </div>
 
-              {/* <ul className="flex-1 overflow-y-auto">
-                {userList.map((user) => (
-                  <li
-                    key={user.id}
-                    onClick={() => handleSelectUser(user.id)}
-                    className={`flex cursor-pointer items-center space-x-3 px-4 py-3 transition-colors ${activeUserId === user.id
-                      ? "bg-gradient-to-r from-indigo-500/20 via-purple-600/20 to-pink-500/20"
-                      : "hover:bg-slate-800/50"
-                      }`}
-                  >
-                    <img
-                      src={user.avatar}
-                      alt={user.name}
-                      className="h-10 w-10 rounded-full"
-                    />
-                    <div className="min-w-0">
-                      <p className="truncate font-medium">{user.name}</p>
-                      <p className="truncate text-xs text-gray-400">
-                        {messagesByUser[user.id]?.slice(-1)[0]?.text ?? "No messages yet"}
-                      </p>
-                    </div>
-                  </li>
-                ))}
-              </ul> */}
               <ul className="flex-1 overflow-y-auto">
                 {[...userList]
                   .sort((a, b) => {
@@ -445,11 +484,22 @@ export default function Chat() {
           ${user.name === username ? "border-l-4 border-indigo-500 bg-slate-800/40" : ""}
         `}
                     >
-                      <img
+                      {/* <img
                         src={user.avatar}
                         alt={user.name}
                         className={`h-10 w-10 rounded-full ${user.name === username ? "ring-2 ring-indigo-500" : ""}`}
-                      />
+                      /> */}
+                      <div className="relative">
+                        <img
+                          src={user.avatar}
+                          alt={user.name}
+                          className={`h-10 w-10 rounded-full ${user.name === username ? "ring-2 ring-indigo-500" : ""
+                            }`}
+                        />
+                        {unreadByUser[user.id] && (
+                          <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-gradient-to-r from-indigo-500 via-purple-600 to-pink-500"></span>
+                        )}
+                      </div>
                       <div className="min-w-0">
                         <p
                           className={`truncate font-medium ${user.name === username
