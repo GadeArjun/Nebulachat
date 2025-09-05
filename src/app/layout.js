@@ -32,7 +32,7 @@ export const metadata = {
     siteName: "NebulaChat",
     images: [
       {
-        url: "/og-image.png",
+        url: "https://nebulachat.onrender.com/og-image.png",
         width: 1200,
         height: 630,
         alt: "NebulaChat",
@@ -45,7 +45,7 @@ export const metadata = {
     card: "summary_large_image",
     title: "NebulaChat – Connect Instantly. Chat Anonymously.",
     description: "A free, global platform for ephemeral, anonymous conversations.",
-    images: ["/og-image.png"],
+    images: ["https://nebulachat.onrender.com/og-image.png"],
     site: "@NebulaChat",
     creator: "@NebulaChat",
   },
