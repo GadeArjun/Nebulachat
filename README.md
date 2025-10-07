@@ -3,12 +3,11 @@
 > **NebulaChat** is a privacy-focused, ephemeral chat application enabling instant, anonymous communication. Built with Next.js, Socket.IO, and Express, it features a modern UI, real-time messaging, and zero data storage.
 
 ---
-## 🌐 Live Demo
+> ## 🌐 Live Demo
 
 You can try out the live version of **NebulaChat - Anonymous Real-Time Chat Platform** here:  
 
 **[Live Demo Link](https://nebulachat.onrender.com/)**  
-
 ---
 
 ## 🚀 Features
