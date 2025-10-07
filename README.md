@@ -4,10 +4,8 @@
 
 ---
 > ## 🌐 Live Demo
-
-You can try out the live version of **NebulaChat - Anonymous Real-Time Chat Platform** here:  
-
-**[Live Demo Link](https://nebulachat.onrender.com/)**  
+>You can try out the live version of **NebulaChat - Anonymous Real-Time Chat Platform** here:  
+>**[Click Here](https://nebulachat.onrender.com/)**  
 ---
 
 ## 🚀 Features
