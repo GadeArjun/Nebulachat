@@ -4,10 +4,10 @@ const { createServer } =require("http");
 const { Server } = require("socket.io");
 const express = require("express");
 
-const dev = process.env.NODE_ENV !== "production";
-const app = next({ dev });
-const handle = app.getRequestHandler();
-
+const dev = process.RequestHandler();
+env.NODE_ENV !== "production";
+const app = next({ dev:true });
+const handle = app.get
 app.prepare().then(() => {
   const expressApp = express();
   const server = createServer(expressApp);
