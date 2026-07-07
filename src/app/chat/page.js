@@ -93,10 +93,10 @@ export default function Chat() {
 
 
 
-    // return () => {
-    //   socket.disconnect();
-    //   socketRef.current = null;
-    // };
+    return () => {
+      socket.disconnect();
+      socketRef.current = null;
+    };
   }, []);
 
   const activeUser = useMemo(
